@@ -27,9 +27,11 @@ export interface PeopleSearchOutput {
 }
 
 export async function peopleSearch(client: GraphClient, input: PeopleSearchInput): Promise<PeopleSearchOutput> {
+  // Strip embedded double-quotes to prevent OData $search injection.
+  const safeQuery = input.query.replace(/"/g, "");
   const response = await client.request<{ value: Person[] }>("/me/people", {
     query: {
-      $search: `"${input.query}"`,
+      $search: `"${safeQuery}"`,
       $select: "displayName,emailAddresses,jobTitle,department",
       $top: input.top
     }

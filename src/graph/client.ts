@@ -40,7 +40,8 @@ export class GraphClient {
         });
 
         if (response.ok) {
-          if (response.status === 204) {
+          // 204 No Content and 202 Accepted (e.g. /me/sendMail) carry no body.
+          if (response.status === 204 || response.status === 202) {
             return undefined as T;
           }
 

@@ -130,5 +130,7 @@ export async function filesRead(client: GraphClient, input: FilesReadInput): Pro
     }
   }
 
-  return { id: meta.id, name: meta.name, mimeType, contentText, downloadUrl };
+  // Only surface the pre-authenticated download URL when content could not be inlined,
+  // to avoid returning a credential-free URL alongside readable content unnecessarily.
+  return { id: meta.id, name: meta.name, mimeType, contentText, downloadUrl: contentText !== null ? null : downloadUrl };
 }

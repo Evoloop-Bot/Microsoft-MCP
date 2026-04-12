@@ -98,6 +98,14 @@ async function main(): Promise<void> {
     graphBaseUrl: config.graphBaseUrl
   });
 
+  if (config.allowedSharePointSites.length > 0) {
+    logWarn(
+      "MICROSOFT_ALLOWED_SHAREPOINT_SITES is set but SharePoint allowlist enforcement is not yet implemented — " +
+      "files_list_items and files_read will accept any driveId until this is enforced.",
+      { allowedSharePointSites: config.allowedSharePointSites }
+    );
+  }
+
   const tokenProvider = createTokenProvider(config);
   const graph = new GraphClient(config, tokenProvider);
 

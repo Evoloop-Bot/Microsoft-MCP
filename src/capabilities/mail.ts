@@ -43,7 +43,7 @@ export async function mailListMessages(client: GraphClient, input: MailListMessa
     query["$filter"] = input.filter;
   }
 
-  const response = await client.request<{ value: MailMessage[] }>(`/me/mailFolders/${folder}/messages`, { query });
+  const response = await client.request<{ value: MailMessage[] }>(`/me/mailFolders/${encodeURIComponent(folder)}/messages`, { query });
 
   return {
     messages: response.value.map((m) => ({

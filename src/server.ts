@@ -60,7 +60,8 @@ function makeTool<T>(opts: {
         domain: opts.domain,
         requestId,
         latencyMs: Date.now() - startMs,
-        mutating: opts.mutating
+        mutating: opts.mutating,
+        success: true
       });
       return {
         content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }]
@@ -77,7 +78,7 @@ function makeTool<T>(opts: {
               : "Unknown error";
 
       logToolError({ tool: opts.name, domain: opts.domain, requestId, error: message });
-      logToolCall({ tool: opts.name, domain: opts.domain, requestId, latencyMs, mutating: opts.mutating });
+      logToolCall({ tool: opts.name, domain: opts.domain, requestId, latencyMs, mutating: opts.mutating, success: false });
 
       return {
         content: [{ type: "text" as const, text: message }],

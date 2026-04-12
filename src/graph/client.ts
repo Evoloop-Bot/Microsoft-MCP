@@ -16,6 +16,10 @@ export class GraphClient {
     private readonly tokenProvider: TokenProvider
   ) {}
 
+  get httpTimeoutMs(): number {
+    return this.config.httpTimeoutMs;
+  }
+
   async request<T>(path: string, options: GraphRequestOptions = {}): Promise<T> {
     const method = options.method ?? "GET";
     const scopes = options.scopes ?? this.config.graphScopes;

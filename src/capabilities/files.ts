@@ -126,11 +126,22 @@ export async function filesRead(client: GraphClient, input: FilesReadInput): Pro
   let contentText: string | null = null;
 
   if (isTextType && withinSizeLimit && downloadUrl) {
-    // Fetch raw content — use download URL directly (no auth header needed for pre-authenticated download URL)
-    const res = await fetch(downloadUrl);
-    if (res.ok) {
-      const buf = await res.arrayBuffer();
-      contentText = new TextDecoder().decode(new Uint8Array(buf).slice(0, input.maxBytes));
+    // Fetch raw content using the pre-authenticated download URL (no auth header needed).
+    // Apply an AbortController timeout matching the configured Graph client timeout so
+    // slow connections do not hang indefinitely. On timeout or network error, fall through
+    // to return downloadUrl so the caller can retrieve content out-of-band.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), client.httpTimeoutMs);
+    try {
+      const res = await fetch(downloadUrl, { signal: controller.signal });
+      if (res.ok) {
+        const buf = await res.arrayBuffer();
+        contentText = new TextDecoder().decode(new Uint8Array(buf).slice(0, input.maxBytes));
+      }
+    } catch {
+      // Timeout or network error — contentText stays null; downloadUrl is returned below.
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 

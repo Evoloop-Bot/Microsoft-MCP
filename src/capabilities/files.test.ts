@@ -73,7 +73,7 @@ describe("filesListItemsInputSchema path validation", () => {
     assert.ok(!acceptsPath(filesListItemsInputSchema, "/foo%2F..%2Fbar"));
   });
 
-  it("rejects double-encoded segment: %252e%252e (single-decode gives %2e%2e, not .. — still safe to accept)", () => {
+  it("accepts double-encoded segment: %252e%252e (single-decode gives %2e%2e, not .. — not a traversal vector)", () => {
     // Double encoding decodes to %2e%2e (not ..) in a single decodeURIComponent pass.
     // The validator must not over-reject here — double-encoded paths are just invalid
     // file names on Graph and Graph will return 400, but they are not traversal vectors.

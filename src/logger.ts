@@ -13,6 +13,7 @@ interface LogEntry {
   latencyMs?: number;
   retryCount?: number;
   mutating?: boolean;
+  success?: boolean;
   message: string;
   error?: string;
 }
@@ -28,12 +29,13 @@ export function logToolCall(opts: {
   latencyMs: number;
   mutating: boolean;
   retryCount?: number;
+  success?: boolean;
 }): void {
-  emit({
-    level: "info",
-    message: opts.mutating ? "[MUTATING] tool call completed" : "tool call completed",
-    ...opts
-  });
+  const succeeded = opts.success !== false;
+  const label = succeeded
+    ? (opts.mutating ? "[MUTATING] tool call succeeded" : "tool call succeeded")
+    : (opts.mutating ? "[MUTATING] tool call errored" : "tool call errored");
+  emit({ level: "info", message: label, ...opts });
 }
 
 export function logToolError(opts: {

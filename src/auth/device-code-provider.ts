@@ -1,4 +1,4 @@
-import { ConfidentialClientApplication, DeviceCodeRequest, IPublicClientApplication, PublicClientApplication } from "@azure/msal-node";
+import { DeviceCodeRequest, IPublicClientApplication, PublicClientApplication } from "@azure/msal-node";
 
 import type { MicrosoftGraphConfig } from "../config.js";
 import type { AccessToken, TokenProvider } from "./types.js";
@@ -16,6 +16,9 @@ export class DeviceCodeTokenProvider implements TokenProvider {
   }
 
   async getAccessToken(scopes: string[]): Promise<AccessToken> {
+    // MSAL maintains an in-memory token cache across calls within the same process.
+    // Tokens are not persisted to disk — re-auth is required on each server restart.
+    // This is intentional for the pilot: it avoids storing credentials at rest.
     const request: DeviceCodeRequest = {
       deviceCodeCallback: (response) => {
         process.stderr.write(`${response.message}\n`);
@@ -35,44 +38,6 @@ export class DeviceCodeTokenProvider implements TokenProvider {
   }
 }
 
-export class ClientCredentialsTokenProvider implements TokenProvider {
-  private readonly app: ConfidentialClientApplication;
-
-  constructor(private readonly config: MicrosoftGraphConfig) {
-    if (!config.clientSecret) {
-      throw new Error("MICROSOFT_CLIENT_SECRET is required for client credentials flow.");
-    }
-
-    this.app = new ConfidentialClientApplication({
-      auth: {
-        clientId: config.clientId,
-        clientSecret: config.clientSecret,
-        authority: `https://login.microsoftonline.com/${config.tenantId}`
-      }
-    });
-  }
-
-  async getAccessToken(scopes: string[]): Promise<AccessToken> {
-    const result = await this.app.acquireTokenByClientCredential({ scopes });
-    if (!result?.accessToken) {
-      throw new Error("Client credentials flow completed without an access token.");
-    }
-
-    return {
-      token: result.accessToken,
-      expiresOn: result.expiresOn ?? undefined
-    };
-  }
-}
-
 export function createTokenProvider(config: MicrosoftGraphConfig): TokenProvider {
-  if (config.authFlow === "client_credentials") {
-    return new ClientCredentialsTokenProvider(config);
-  }
-
-  if (config.authFlow === "authorization_code") {
-    throw new Error("MICROSOFT_AUTH_FLOW=authorization_code is reserved for a hosted bridge and is not implemented in this runtime.");
-  }
-
   return new DeviceCodeTokenProvider(config);
 }

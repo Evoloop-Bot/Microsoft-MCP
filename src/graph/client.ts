@@ -100,7 +100,13 @@ export class GraphClient {
   }
 
   private buildUrl(path: string, query?: GraphRequestOptions["query"]): string {
-    const url = new URL(path, this.config.graphBaseUrl.endsWith("/") ? this.config.graphBaseUrl : `${this.config.graphBaseUrl}/`);
+    const base = this.config.graphBaseUrl.endsWith("/")
+      ? this.config.graphBaseUrl
+      : `${this.config.graphBaseUrl}/`;
+    // new URL('/absolute', 'https://host/v1.0/') drops /v1.0. Strip the
+    // leading slash so paths are always resolved relative to the versioned base.
+    const relativePath = path.startsWith("/") ? path.slice(1) : path;
+    const url = new URL(relativePath, base);
 
     if (query) {
       for (const [key, value] of Object.entries(query)) {

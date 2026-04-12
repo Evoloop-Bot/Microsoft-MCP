@@ -39,7 +39,7 @@ export interface CalendarListEventsOutput {
 
 export async function calendarListEvents(client: GraphClient, input: CalendarListEventsInput): Promise<CalendarListEventsOutput> {
   const path = input.calendarId
-    ? `/me/calendars/${input.calendarId}/calendarView`
+    ? `/me/calendars/${encodeURIComponent(input.calendarId)}/calendarView`
     : "/me/calendarView";
 
   const response = await client.request<{ value: CalendarEvent[] }>(path, {

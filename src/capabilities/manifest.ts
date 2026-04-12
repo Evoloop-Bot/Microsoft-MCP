@@ -50,22 +50,22 @@ export const capabilityManifest: CapabilityContract[] = [
     domain: "files",
     riskLevel: "read_only",
     requiredScopes: ["Files.Read"],
-    description: "List files and folders in OneDrive or an approved SharePoint location.",
-    inputShape: ["driveId?: string", "itemId?: string", "path?: string"],
+    description: "List files and folders in the signed-in user's OneDrive (pilot scope; SharePoint drives not yet supported).",
+    inputShape: ["itemId?: string", "path?: string"],
     outputShape: ["items: { id, name, type, size, webUrl, lastModifiedDateTime }[]"],
     failureModes: ["authentication_required", "authorization_denied", "not_found", "validation_error", "rate_limited", "transient_upstream_error"],
-    validationNotes: ["Restrict SharePoint access to allowlisted sites.", "Reject ambiguous requests that provide both itemId and path."]
+    validationNotes: ["Reject ambiguous requests that provide both itemId and path.", "Reject path segments containing .. or . to prevent traversal."]
   },
   {
     name: "files_read",
     domain: "files",
     riskLevel: "read_only",
     requiredScopes: ["Files.Read"],
-    description: "Read metadata and bounded content for a file.",
-    inputShape: ["driveId?: string", "itemId?: string", "path?: string", "maxBytes?: number"],
+    description: "Read metadata and bounded content for a file in the signed-in user's OneDrive (pilot scope).",
+    inputShape: ["itemId?: string", "path?: string", "maxBytes?: number"],
     outputShape: ["id: string", "name: string", "mimeType?: string", "contentText?: string", "downloadUrl?: string"],
     failureModes: ["authentication_required", "authorization_denied", "not_found", "validation_error", "rate_limited", "transient_upstream_error"],
-    validationNotes: ["Cap inline content size.", "Prefer download links for large binary files."]
+    validationNotes: ["Cap inline content size.", "Prefer download links for large binary files.", "Reject path segments containing .. or . to prevent traversal."]
   },
   {
     name: "people_search",

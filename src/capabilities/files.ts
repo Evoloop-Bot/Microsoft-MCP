@@ -12,12 +12,33 @@ interface DriveItem {
   "@microsoft.graph.downloadUrl"?: string;
 }
 
+// Reject path strings that contain relative segments (.. or .) after decoding.
+// These would survive URL normalisation and could redirect the request to a
+// different Graph endpoint.
+function noRelativeSegments(value: string | undefined): boolean {
+  if (!value) {
+    return true;
+  }
+  return !value.split("/").some((seg) => {
+    try {
+      const decoded = decodeURIComponent(seg);
+      return decoded === ".." || decoded === ".";
+    } catch {
+      return true; // reject malformed percent-encoding
+    }
+  });
+}
+
 // ---------- files_list_items ----------
 
+// files capability is scoped to the signed-in user's OneDrive for the pilot.
+// External driveId (SharePoint drives) is excluded until allowlist enforcement
+// is implemented. See MSM-18 security review for context.
 export const filesListItemsInputSchema = z.object({
-  driveId: z.string().optional().describe("OneDrive drive ID. Defaults to the user's default drive."),
   itemId: z.string().optional().describe("Folder item ID to list. Mutually exclusive with path."),
-  path: z.string().optional().describe("Folder path relative to root (e.g. /Documents). Mutually exclusive with itemId.")
+  path: z.string().optional()
+    .refine(noRelativeSegments, "Path must not contain relative segments (.. or .)")
+    .describe("Folder path relative to root (e.g. /Documents). Mutually exclusive with itemId.")
 }).refine((v) => !(v.itemId !== undefined && v.path !== undefined), {
   message: "Provide itemId or path, not both."
 });
@@ -36,27 +57,17 @@ export interface FilesListItemsOutput {
 }
 
 export async function filesListItems(client: GraphClient, input: FilesListItemsInput): Promise<FilesListItemsOutput> {
-  let path: string;
+  let apiPath: string;
 
-  if (input.driveId) {
-    if (input.itemId) {
-      path = `/drives/${input.driveId}/items/${input.itemId}/children`;
-    } else if (input.path) {
-      path = `/drives/${input.driveId}/root:${input.path}:/children`;
-    } else {
-      path = `/drives/${input.driveId}/root/children`;
-    }
+  if (input.itemId) {
+    apiPath = `/me/drive/items/${encodeURIComponent(input.itemId)}/children`;
+  } else if (input.path) {
+    apiPath = `/me/drive/root:${input.path}:/children`;
   } else {
-    if (input.itemId) {
-      path = `/me/drive/items/${input.itemId}/children`;
-    } else if (input.path) {
-      path = `/me/drive/root:${input.path}:/children`;
-    } else {
-      path = "/me/drive/root/children";
-    }
+    apiPath = "/me/drive/root/children";
   }
 
-  const response = await client.request<{ value: DriveItem[] }>(path, {
+  const response = await client.request<{ value: DriveItem[] }>(apiPath, {
     query: { $select: "id,name,file,folder,size,webUrl,lastModifiedDateTime", $top: 100 }
   });
 
@@ -77,9 +88,10 @@ export async function filesListItems(client: GraphClient, input: FilesListItemsI
 const MAX_INLINE_BYTES = 512 * 1024; // 512 KB
 
 export const filesReadInputSchema = z.object({
-  driveId: z.string().optional().describe("OneDrive drive ID. Defaults to the user's default drive."),
   itemId: z.string().optional().describe("Item ID. Mutually exclusive with path."),
-  path: z.string().optional().describe("File path relative to root. Mutually exclusive with itemId."),
+  path: z.string().optional()
+    .refine(noRelativeSegments, "Path must not contain relative segments (.. or .)")
+    .describe("File path relative to root. Mutually exclusive with itemId."),
   maxBytes: z.number().int().min(1).max(MAX_INLINE_BYTES).default(65536).describe("Maximum inline content bytes (default 64 KB, max 512 KB).")
 }).refine((v) => !(v.itemId !== undefined && v.path !== undefined), {
   message: "Provide itemId or path, not both."
@@ -98,17 +110,9 @@ export interface FilesReadOutput {
 }
 
 export async function filesRead(client: GraphClient, input: FilesReadInput): Promise<FilesReadOutput> {
-  let metaPath: string;
-
-  if (input.driveId) {
-    metaPath = input.itemId
-      ? `/drives/${input.driveId}/items/${input.itemId}`
-      : `/drives/${input.driveId}/root:${input.path}`;
-  } else {
-    metaPath = input.itemId
-      ? `/me/drive/items/${input.itemId}`
-      : `/me/drive/root:${input.path}`;
-  }
+  const metaPath = input.itemId
+    ? `/me/drive/items/${encodeURIComponent(input.itemId)}`
+    : `/me/drive/root:${input.path}`;
 
   const meta = await client.request<DriveItem>(metaPath, {
     query: { $select: "id,name,file,size,@microsoft.graph.downloadUrl" }

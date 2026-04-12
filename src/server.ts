@@ -99,7 +99,7 @@ async function main(): Promise<void> {
     graphBaseUrl: config.graphBaseUrl
   });
 
-  const tokenProvider = createTokenProvider(config);
+  const tokenProvider = await createTokenProvider(config);
   const graph = new GraphClient(config, tokenProvider);
 
   const server = new McpServer(
@@ -108,9 +108,10 @@ async function main(): Promise<void> {
   );
 
   const caps = new Set(config.enabledCapabilities);
+  const enabledTools = new Set(config.enabledTools);
 
   // ---- mail ----
-  if (caps.has("mail")) {
+  if (enabledTools.has("mail_list_messages")) {
     server.registerTool(
       "mail_list_messages",
       {
@@ -120,7 +121,8 @@ async function main(): Promise<void> {
       },
       makeTool({ name: "mail_list_messages", domain: "mail", mutating: false, handler: (args) => mailListMessages(graph, args) })
     );
-
+  }
+  if (enabledTools.has("mail_send")) {
     server.registerTool(
       "mail_send",
       {
@@ -130,12 +132,17 @@ async function main(): Promise<void> {
       },
       makeTool({ name: "mail_send", domain: "mail", mutating: true, handler: (args) => mailSend(graph, args) })
     );
-  } else {
+  }
+  if (!caps.has("mail")) {
     logWarn("mail capability disabled — mail_list_messages and mail_send not registered");
+  } else if (!enabledTools.has("mail_list_messages") || !enabledTools.has("mail_send")) {
+    logInfo("mail capability partially enabled", {
+      enabledTools: config.enabledTools.filter((tool) => tool.startsWith("mail_"))
+    });
   }
 
   // ---- calendar ----
-  if (caps.has("calendar")) {
+  if (enabledTools.has("calendar_list_events")) {
     server.registerTool(
       "calendar_list_events",
       {
@@ -145,7 +152,8 @@ async function main(): Promise<void> {
       },
       makeTool({ name: "calendar_list_events", domain: "calendar", mutating: false, handler: (args) => calendarListEvents(graph, args) })
     );
-
+  }
+  if (enabledTools.has("calendar_create_event")) {
     server.registerTool(
       "calendar_create_event",
       {
@@ -155,12 +163,17 @@ async function main(): Promise<void> {
       },
       makeTool({ name: "calendar_create_event", domain: "calendar", mutating: true, handler: (args) => calendarCreateEvent(graph, args) })
     );
-  } else {
+  }
+  if (!caps.has("calendar")) {
     logWarn("calendar capability disabled — calendar_list_events and calendar_create_event not registered");
+  } else if (!enabledTools.has("calendar_list_events") || !enabledTools.has("calendar_create_event")) {
+    logInfo("calendar capability partially enabled", {
+      enabledTools: config.enabledTools.filter((tool) => tool.startsWith("calendar_"))
+    });
   }
 
   // ---- files ----
-  if (caps.has("files")) {
+  if (enabledTools.has("files_list_items")) {
     server.registerTool(
       "files_list_items",
       {
@@ -170,7 +183,8 @@ async function main(): Promise<void> {
       },
       makeTool({ name: "files_list_items", domain: "files", mutating: false, handler: (args) => filesListItems(graph, args) })
     );
-
+  }
+  if (enabledTools.has("files_read")) {
     server.registerTool(
       "files_read",
       {
@@ -180,12 +194,17 @@ async function main(): Promise<void> {
       },
       makeTool({ name: "files_read", domain: "files", mutating: false, handler: (args) => filesRead(graph, args) })
     );
-  } else {
+  }
+  if (!caps.has("files")) {
     logWarn("files capability disabled — files_list_items and files_read not registered");
+  } else if (!enabledTools.has("files_list_items") || !enabledTools.has("files_read")) {
+    logInfo("files capability partially enabled", {
+      enabledTools: config.enabledTools.filter((tool) => tool.startsWith("files_"))
+    });
   }
 
   // ---- people ----
-  if (caps.has("people")) {
+  if (enabledTools.has("people_search")) {
     server.registerTool(
       "people_search",
       {
@@ -195,7 +214,8 @@ async function main(): Promise<void> {
       },
       makeTool({ name: "people_search", domain: "people", mutating: false, handler: (args) => peopleSearch(graph, args) })
     );
-  } else {
+  }
+  if (!caps.has("people")) {
     logWarn("people capability disabled — people_search not registered");
   }
 

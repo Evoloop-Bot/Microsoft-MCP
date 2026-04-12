@@ -1,6 +1,8 @@
 import { z } from "zod";
 import type { GraphClient } from "../graph/client.js";
 
+const UTC_TIMEZONE = "UTC";
+
 // ---------- Shared Graph response shapes ----------
 
 interface CalendarEvent {
@@ -43,6 +45,9 @@ export async function calendarListEvents(client: GraphClient, input: CalendarLis
     : "/me/calendarView";
 
   const response = await client.request<{ value: CalendarEvent[] }>(path, {
+    headers: {
+      Prefer: 'outlook.timezone="UTC"'
+    },
     query: {
       startDateTime: input.start,
       endDateTime: input.end,
@@ -56,8 +61,8 @@ export async function calendarListEvents(client: GraphClient, input: CalendarLis
     events: response.value.map((e) => ({
       id: e.id,
       subject: e.subject,
-      start: e.start.dateTime,
-      end: e.end.dateTime,
+      start: formatCalendarDateTime(e.start),
+      end: formatCalendarDateTime(e.end),
       location: e.location?.displayName ?? null,
       webLink: e.webLink
     }))
@@ -88,8 +93,8 @@ export interface CalendarCreateEventOutput {
 export async function calendarCreateEvent(client: GraphClient, input: CalendarCreateEventInput): Promise<CalendarCreateEventOutput> {
   const body: Record<string, unknown> = {
     subject: input.subject,
-    start: { dateTime: input.start, timeZone: "UTC" },
-    end: { dateTime: input.end, timeZone: "UTC" },
+    start: toGraphUtcDateTime(input.start),
+    end: toGraphUtcDateTime(input.end),
     ...(input.bodyText ? { body: { contentType: "text", content: input.bodyText } } : {}),
     ...(input.location ? { location: { displayName: input.location } } : {}),
     ...(input.attendees && input.attendees.length > 0
@@ -104,4 +109,24 @@ export async function calendarCreateEvent(client: GraphClient, input: CalendarCr
     webLink: event.webLink,
     onlineMeetingUrl: event.onlineMeeting?.joinUrl
   };
+}
+
+function toGraphUtcDateTime(value: string): { dateTime: string; timeZone: string } {
+  const date = new Date(value);
+  if (Number.isNaN(date.valueOf())) {
+    throw new Error(`Invalid ISO timestamp "${value}".`);
+  }
+
+  return {
+    dateTime: date.toISOString().replace(/Z$/, ""),
+    timeZone: UTC_TIMEZONE
+  };
+}
+
+function formatCalendarDateTime(value: { dateTime: string; timeZone: string }): string {
+  if (value.timeZone === UTC_TIMEZONE && !/[zZ]$|[+-]\d{2}:\d{2}$/.test(value.dateTime)) {
+    return `${value.dateTime}Z`;
+  }
+
+  return value.dateTime;
 }

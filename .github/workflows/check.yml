@@ -7,8 +7,8 @@ on:
       - main
 
 jobs:
-  typecheck:
-    name: Typecheck
+  verify:
+    name: Verify
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -25,3 +25,9 @@ jobs:
 
       - name: Run check
         run: npm run check
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build

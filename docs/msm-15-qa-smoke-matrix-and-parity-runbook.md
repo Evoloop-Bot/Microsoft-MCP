@@ -39,16 +39,18 @@ Minimum environment contract from the current repo:
 - `MICROSOFT_CLIENT_ID`
 - `MICROSOFT_TENANT_ID`
 - `MICROSOFT_AUTH_FLOW=device_code`
+- `MICROSOFT_TOKEN_CACHE_PATH` or the default user-scoped cache location
 - `MICROSOFT_GRAPH_BASE_URL`
 - `MICROSOFT_GRAPH_SCOPES`
 - `MICROSOFT_ENABLED_CAPABILITIES`
+- `MICROSOFT_ENABLED_TOOLS` when least-privilege tool selection is used
 - `MICROSOFT_HTTP_TIMEOUT_MS`
 - `MICROSOFT_MAX_RETRIES`
 - `MICROSOFT_RETRY_BASE_DELAY_MS`
 
 Current repo gap:
 
-The repository defines configuration and capability contracts and now includes a packaged stdio MCP server command, but it does not yet provide a dedicated QA smoke harness. Engineering must still supply the exact candidate launch command, any package/install invocation details, and setup notes before a host-integrated validation run can move from `blocked` to executable.
+The repository defines configuration and capability contracts and now includes a packaged stdio MCP server command, but it does not yet provide a dedicated QA smoke harness. Engineering must still supply the exact candidate launch command, any package/install invocation details, tenant provisioning, and host-specific setup notes before a host-integrated validation run can move from `blocked` to executable.
 
 ## Smoke Matrix
 

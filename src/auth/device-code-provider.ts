@@ -1,13 +1,31 @@
-import { DeviceCodeRequest, IPublicClientApplication, PublicClientApplication } from "@azure/msal-node";
+import {
+  AccountInfo,
+  DeviceCodeRequest,
+  IPublicClientApplication,
+  InteractionRequiredAuthError,
+  PublicClientApplication
+} from "@azure/msal-node";
+import {
+  DataProtectionScope,
+  Environment,
+  PersistenceCachePlugin,
+  PersistenceCreator
+} from "@azure/msal-node-extensions";
+import path from "node:path";
 
 import type { MicrosoftGraphConfig } from "../config.js";
 import type { AccessToken, TokenProvider } from "./types.js";
 
 export class DeviceCodeTokenProvider implements TokenProvider {
   private readonly app: IPublicClientApplication;
+  private preferredHomeAccountId?: string;
+  private interactiveTokenPromise?: Promise<AccessToken>;
 
-  constructor(private readonly config: MicrosoftGraphConfig) {
-    this.app = new PublicClientApplication({
+  constructor(
+    private readonly config: MicrosoftGraphConfig,
+    app?: IPublicClientApplication
+  ) {
+    this.app = app ?? new PublicClientApplication({
       auth: {
         clientId: config.clientId,
         authority: `https://login.microsoftonline.com/${config.tenantId}`
@@ -16,9 +34,57 @@ export class DeviceCodeTokenProvider implements TokenProvider {
   }
 
   async getAccessToken(scopes: string[]): Promise<AccessToken> {
-    // MSAL maintains an in-memory token cache across calls within the same process.
-    // Tokens are not persisted to disk — re-auth is required on each server restart.
-    // This is intentional for the pilot: it avoids storing credentials at rest.
+    const cachedAccount = await this.getCachedAccount();
+    if (cachedAccount) {
+      try {
+        const result = await this.app.acquireTokenSilent({
+          account: cachedAccount,
+          scopes
+        });
+
+        if (result.accessToken) {
+          this.preferredHomeAccountId = result.account?.homeAccountId ?? cachedAccount.homeAccountId;
+          return {
+            token: result.accessToken,
+            expiresOn: result.expiresOn ?? undefined
+          };
+        }
+      } catch (error) {
+        if (!(error instanceof InteractionRequiredAuthError)) {
+          throw error;
+        }
+      }
+    }
+
+    if (!this.interactiveTokenPromise) {
+      this.interactiveTokenPromise = this.acquireInteractiveToken(scopes).finally(() => {
+        this.interactiveTokenPromise = undefined;
+      });
+    }
+
+    return this.interactiveTokenPromise;
+  }
+
+  private async getCachedAccount(): Promise<AccountInfo | null> {
+    const tokenCache = this.app.getTokenCache();
+
+    if (this.preferredHomeAccountId) {
+      const preferredAccount = await tokenCache.getAccountByHomeId(this.preferredHomeAccountId);
+      if (preferredAccount) {
+        return preferredAccount;
+      }
+    }
+
+    const cachedAccounts = await tokenCache.getAllAccounts();
+    if (cachedAccounts.length === 0) {
+      return null;
+    }
+
+    this.preferredHomeAccountId = cachedAccounts[0].homeAccountId;
+    return cachedAccounts[0];
+  }
+
+  private async acquireInteractiveToken(scopes: string[]): Promise<AccessToken> {
     const request: DeviceCodeRequest = {
       deviceCodeCallback: (response) => {
         process.stderr.write(`${response.message}\n`);
@@ -31,6 +97,8 @@ export class DeviceCodeTokenProvider implements TokenProvider {
       throw new Error("Device code flow completed without an access token.");
     }
 
+    this.preferredHomeAccountId = result.account?.homeAccountId;
+
     return {
       token: result.accessToken,
       expiresOn: result.expiresOn ?? undefined
@@ -38,6 +106,34 @@ export class DeviceCodeTokenProvider implements TokenProvider {
   }
 }
 
-export function createTokenProvider(config: MicrosoftGraphConfig): TokenProvider {
-  return new DeviceCodeTokenProvider(config);
+export async function createTokenProvider(config: MicrosoftGraphConfig): Promise<TokenProvider> {
+  const cachePath = config.tokenCachePath ?? defaultTokenCachePath();
+  const persistence = await PersistenceCreator.createPersistence({
+    cachePath,
+    dataProtectionScope: DataProtectionScope.CurrentUser,
+    serviceName: "m365-mcp-server",
+    accountName: `${config.tenantId}.${config.clientId}`,
+    usePlaintextFileOnLinux: config.tokenCacheUsePlaintextFallback
+  });
+
+  const app = new PublicClientApplication({
+    auth: {
+      clientId: config.clientId,
+      authority: `https://login.microsoftonline.com/${config.tenantId}`
+    },
+    cache: {
+      cachePlugin: new PersistenceCachePlugin(persistence)
+    }
+  });
+
+  return new DeviceCodeTokenProvider(config, app);
+}
+
+function defaultTokenCachePath(): string {
+  const userRootDirectory = Environment.getUserRootDirectory();
+  if (!userRootDirectory) {
+    throw new Error("Unable to determine a user-scoped token cache directory.");
+  }
+
+  return path.join(userRootDirectory, ".m365-mcp", "msal-cache.json");
 }

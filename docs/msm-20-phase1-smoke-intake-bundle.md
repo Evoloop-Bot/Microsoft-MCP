@@ -45,10 +45,15 @@ MICROSOFT_TENANT_ID=<test-tenant-id>          # ← REQUIRES PROVISIONING (see b
 # ── Auth ───────────────────────────────────────────────────────────────────────
 # device_code is the only supported flow for this pilot; do not change this.
 MICROSOFT_AUTH_FLOW=device_code
+# Persisted MSAL cache location. Keep this user-scoped and consistent across
+# Claude and Codex hosts on the validation machine.
+MICROSOFT_TOKEN_CACHE_PATH=<user-scoped-cache-path>
 
 # ── Capabilities ───────────────────────────────────────────────────────────────
 # Enable all four domains so SMK-03 tool-inventory parity covers the full set.
 MICROSOFT_ENABLED_CAPABILITIES=mail,calendar,files,people
+# Optional least-privilege override for narrower runs:
+# MICROSOFT_ENABLED_TOOLS=mail_list_messages,calendar_create_event,files_list_items,files_read,people_search
 
 # ── Graph API ──────────────────────────────────────────────────────────────────
 MICROSOFT_GRAPH_BASE_URL=https://graph.microsoft.com/v1.0
@@ -76,8 +81,8 @@ Operator steps for SMK-02:
 2. The server prints a device-code URL and one-time code to **stderr** before the MCP handshake completes.
 3. Open the URL in any browser, enter the code, and sign in with the test-tenant operator account.
 4. Once sign-in is confirmed the server prints `microsoft-365-mcp ready on stdio` and is active.
-5. Tokens are held **in memory only** — re-auth is required on each server restart. This is
-   intentional: no credentials are written to disk.
+5. Tokens are persisted in a **user-scoped MSAL cache**. Re-auth should only be required when the
+   refresh token expires, consent changes, or the cache is deleted.
 
 ---
 

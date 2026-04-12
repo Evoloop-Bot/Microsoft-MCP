@@ -21,7 +21,7 @@ export const capabilityManifest: CapabilityContract[] = [
     inputShape: ["to: string[]", "cc?: string[]", "subject: string", "bodyText?: string", "bodyHtml?: string"],
     outputShape: ["accepted: boolean", "sentAt: string"],
     failureModes: ["authentication_required", "authorization_denied", "validation_error", "rate_limited", "transient_upstream_error"],
-    validationNotes: ["Require at least one recipient.", "Allow either plain text or HTML body, not neither."]
+    validationNotes: ["Require at least one recipient.", "Require exactly one of bodyText or bodyHtml."]
   },
   {
     name: "calendar_list_events",

@@ -6,8 +6,9 @@ This workspace contains the initial architecture, auth foundation, and first cap
 
 1. Install dependencies with `npm install`.
 2. Copy `.env.example` into your environment and fill in the Microsoft Entra application values.
-3. Use `MICROSOFT_AUTH_FLOW=device_code` for local interactive development.
-4. Run `npm run check` before opening implementation or release-readiness reviews.
+3. Use `MICROSOFT_AUTH_FLOW=device_code` for local interactive development; the server now persists a user-scoped MSAL token cache so silent refresh works across restarts.
+4. Prefer `MICROSOFT_ENABLED_TOOLS` for least-privilege deployments when you do not want every tool in a capability domain.
+5. Run `npm run check`, `npm test`, and `npm run build` before opening implementation or release-readiness reviews.
 
 ## Current Project Artifacts
 
@@ -31,4 +32,4 @@ The first pilot should validate:
 
 - Repository: `https://github.com/Evoloop-Bot/Microsoft-MCP`
 - `main` is reserved for pull-request merges only
-- `npm run check` runs in GitHub Actions and is the initial required branch check
+- GitHub Actions runs `npm run check`, `npm test`, and `npm run build`

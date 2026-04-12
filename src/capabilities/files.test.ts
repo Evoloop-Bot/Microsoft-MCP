@@ -10,7 +10,8 @@
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { filesListItemsInputSchema, filesReadInputSchema } from "./files.js";
+import type { GraphClient } from "../graph/client.js";
+import { filesListItems, filesListItemsInputSchema, filesRead, filesReadInputSchema } from "./files.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -80,8 +81,8 @@ describe("filesListItemsInputSchema path validation", () => {
     assert.ok(acceptsPath(filesListItemsInputSchema, "/%252e%252e"));
   });
 
-  it("rejects malformed percent-encoding: %zz", () => {
-    assert.ok(!acceptsPath(filesListItemsInputSchema, "/%zz/documents"));
+  it("accepts a literal percent sign in the path", () => {
+    assert.ok(acceptsPath(filesListItemsInputSchema, "/100%/documents"));
   });
 
   // Mutual exclusion
@@ -125,5 +126,40 @@ describe("filesReadInputSchema path validation", () => {
   it("requires itemId or path", () => {
     const result = filesReadInputSchema.safeParse({});
     assert.ok(!result.success);
+  });
+});
+
+describe("files capability Graph path encoding", () => {
+  it("encodes reserved characters for path-based listing", async () => {
+    let seenPath = "";
+    const client = {
+      request: async (requestPath: string) => {
+        seenPath = requestPath;
+        return { value: [] };
+      }
+    } as unknown as GraphClient;
+
+    await filesListItems(client, { path: "/Docs/Design#1?.txt" });
+    assert.equal(seenPath, "/me/drive/root:/Docs/Design%231%3F.txt:/children");
+  });
+
+  it("encodes literal percent signs for path-based reads", async () => {
+    let seenPath = "";
+    const client = {
+      httpTimeoutMs: 1000,
+      request: async (requestPath: string) => {
+        seenPath = requestPath;
+        return {
+          id: "1",
+          name: "Budget 100%.txt",
+          file: { mimeType: "text/plain" },
+          size: 999999
+        };
+      }
+    } as unknown as GraphClient;
+
+    const result = await filesRead(client, { path: "/Finance/Budget 100%.txt", maxBytes: 1024 });
+    assert.equal(seenPath, "/me/drive/root:/Finance/Budget%20100%25.txt");
+    assert.equal(result.contentText, null);
   });
 });

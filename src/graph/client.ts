@@ -23,7 +23,6 @@ export class GraphClient {
   async request<T>(path: string, options: GraphRequestOptions = {}): Promise<T> {
     const method = options.method ?? "GET";
     const scopes = options.scopes ?? this.config.graphScopes;
-    const token = await this.tokenProvider.getAccessToken(scopes);
     const url = this.buildUrl(path, options.query);
 
     for (let attempt = 0; ; attempt += 1) {
@@ -31,6 +30,7 @@ export class GraphClient {
       const timeout = setTimeout(() => controller.abort(), this.config.httpTimeoutMs);
 
       try {
+        const token = await this.tokenProvider.getAccessToken(scopes);
         const response = await fetch(url, {
           method,
           headers: {
@@ -68,7 +68,7 @@ export class GraphClient {
         }
 
         if (error instanceof Error && error.name === "AbortError") {
-          if (this.shouldRetry(504, attempt)) {
+          if (this.shouldRetryTimeout(attempt)) {
             await sleep(backoffDelayMs(this.config.retryBaseDelayMs, attempt));
             continue;
           }
@@ -129,6 +129,10 @@ export class GraphClient {
     }
 
     return status === 429 || status >= 500;
+  }
+
+  private shouldRetryTimeout(attempt: number): boolean {
+    return attempt < this.config.maxRetries;
   }
 }
 

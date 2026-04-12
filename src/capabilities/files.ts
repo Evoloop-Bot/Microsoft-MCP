@@ -20,13 +20,27 @@ function noRelativeSegments(value: string | undefined): boolean {
   if (!value) {
     return true;
   }
-  let decoded: string;
-  try {
-    decoded = decodeURIComponent(value);
-  } catch {
-    return false; // reject malformed percent-encoding
-  }
+  const decoded = decodePath(value);
   return !decoded.split("/").some((seg) => seg === ".." || seg === ".");
+}
+
+function encodeDrivePath(value: string): string {
+  const decoded = decodePath(value);
+  if (decoded === "/" || decoded === "") {
+    return "/";
+  }
+
+  const hasLeadingSlash = decoded.startsWith("/");
+  const encodedSegments = decoded
+    .split("/")
+    .filter((segment) => segment.length > 0)
+    .map((segment) => encodeURIComponent(segment));
+
+  return `${hasLeadingSlash ? "/" : ""}${encodedSegments.join("/")}`;
+}
+
+function decodePath(value: string): string {
+  return decodeURIComponent(value.replace(/%(?![0-9A-Fa-f]{2})/g, "%25"));
 }
 
 // ---------- files_list_items ----------
@@ -62,7 +76,8 @@ export async function filesListItems(client: GraphClient, input: FilesListItemsI
   if (input.itemId) {
     apiPath = `/me/drive/items/${encodeURIComponent(input.itemId)}/children`;
   } else if (input.path) {
-    apiPath = `/me/drive/root:${input.path}:/children`;
+    const drivePath = encodeDrivePath(input.path);
+    apiPath = drivePath === "/" ? "/me/drive/root/children" : `/me/drive/root:${drivePath}:/children`;
   } else {
     apiPath = "/me/drive/root/children";
   }
@@ -110,9 +125,10 @@ export interface FilesReadOutput {
 }
 
 export async function filesRead(client: GraphClient, input: FilesReadInput): Promise<FilesReadOutput> {
+  const drivePath = input.path ? encodeDrivePath(input.path) : undefined;
   const metaPath = input.itemId
     ? `/me/drive/items/${encodeURIComponent(input.itemId)}`
-    : `/me/drive/root:${input.path}`;
+    : drivePath === "/" ? "/me/drive/root" : `/me/drive/root:${drivePath}`;
 
   const meta = await client.request<DriveItem>(metaPath, {
     query: { $select: "id,name,file,size,@microsoft.graph.downloadUrl" }

@@ -21,8 +21,8 @@ Use one codebase with a stdio-first MCP entrypoint. Both Claude and Codex should
 1. Node.js LTS runtime.
 2. TypeScript build and type-check commands.
 3. `.env.example` as the canonical local config reference.
-4. Device-code auth for day-one developer setup.
-5. A future package/bin entrypoint that wraps the server in a host-friendly command.
+4. Device-code auth for day-one developer setup, backed by a persisted user-scoped MSAL cache for silent reuse.
+5. A packaged/bin entrypoint that wraps the server in a host-friendly command.
 
 ## QA Gates for Initial Pilot
 
@@ -99,7 +99,7 @@ The pilot signoff path must be explicit before a candidate is called release-rea
 1. Log request IDs, tool names, domain, latency, and retry count.
 2. Never log access tokens, raw message bodies, or file contents by default.
 3. Emit a clear marker when a tool call mutates upstream state.
-4. Capture configuration warnings when enabled capabilities and requested scopes drift out of alignment.
+4. Capture configuration warnings when enabled capabilities, enabled tools, and requested scopes drift out of alignment.
 
 ## Release Criteria
 

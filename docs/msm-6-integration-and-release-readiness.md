@@ -35,6 +35,65 @@ The pilot should not ship until all of the following are true:
 5. Rate-limit and expired-token paths are exercised at least once in test coverage or a controlled simulation.
 6. Error responses preserve the normalized categories from the Graph client layer.
 
+## QA Ownership and Evidence
+
+The QA function owns release evidence for pilot candidates. Engineering can build harnesses or fixtures, but QA is the release gate for whether the evidence is complete and believable.
+
+1. Tenant-backed auth smoke ownership sits with QA for one clean-environment device-code run.
+2. The required read-path smoke must exercise `mail_list_messages` because it is the narrowest user-facing phase-1 validation target in the current manifest.
+3. The required mutating-path smoke must exercise either `mail_send` or `calendar_create_event` with an observable side effect and log-redaction review.
+4. QA owns Claude/Codex parity validation against the same stdio command, package build, and environment-variable contract.
+5. QA publishes a release recommendation that is explicit about pass, fail, or blocked status for every pilot candidate.
+
+## Claude and Codex Parity Checks
+
+QA should run the same candidate build through both hosts and compare behavior against one shared contract.
+
+1. Start the same stdio MCP entrypoint in Claude and Codex with the same environment variables and enabled capability set.
+2. Confirm the exposed tool inventory matches the current manifest for mail, calendar, files, and people domains.
+3. Execute the auth smoke plus the selected read and mutating validations in both hosts.
+4. Compare normalized error categories, required scope failures, and retry-safe behavior across both hosts.
+5. Verify mutating calls emit audit-friendly markers without leaking tokens, message bodies, or file contents.
+
+## Regression Checklist
+
+Every pilot-candidate release needs a QA checklist that covers cross-domain regressions, even when the implementation remains intentionally narrow.
+
+### Mail
+
+1. `mail_list_messages` returns bounded inbox data with sender, subject, received time, and message id.
+2. `mail_send` proves delivery or acceptance using a safe verification inbox and confirms body content is not leaked in default logs.
+
+### Calendar
+
+1. `calendar_list_events` respects bounded time windows and returns stable event metadata.
+2. `calendar_create_event` confirms the created event link/id and validates that obvious bad ranges are rejected cleanly.
+
+### Files
+
+1. `files_list_items` is limited to approved drives or paths and rejects ambiguous item selectors.
+2. `files_read`, when enabled for a candidate, enforces bounded inline content and falls back to download links for larger files.
+
+### People
+
+1. `people_search` rejects underspecified queries and returns stable contact metadata for valid searches.
+
+### Cross-cutting
+
+1. Auth-required, expired-token, throttling, and authorization-denied paths map to normalized error categories.
+2. Capability and scope configuration stays aligned with the enabled manifest.
+3. Operator setup steps are repeatable for a second user on a clean environment.
+
+## Pilot Release Signoff
+
+The pilot signoff path must be explicit before a candidate is called release-ready.
+
+1. Engineering proposes a candidate with the exact branch, commit, or pull request under review plus setup notes for QA.
+2. QA records `npm run check`, tenant-backed auth smoke, one read-path smoke, one mutating-path smoke, and host-parity results.
+3. Security signs off on auth handling, scope fit, and default-log redaction before pilot approval.
+4. CTO approves the candidate only after QA and security evidence both pass or explicitly waive non-blocking items.
+5. If branch protection or required-check enforcement is unavailable, the release can be evaluated but not treated as a protected pilot gate.
+
 ## Observability Requirements
 
 1. Log request IDs, tool names, domain, latency, and retry count.

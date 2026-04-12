@@ -26,3 +26,9 @@ The first pilot should validate:
 2. One delegated-auth flow succeeds against a real tenant.
 3. At least one read tool and one mutating tool execute successfully with redaction-safe logs.
 4. Setup and rollback instructions are complete enough for an internal operator.
+
+## GitHub Workflow
+
+- Repository: `https://github.com/Evoloop-Bot/Microsoft-MCP`
+- `main` is reserved for pull-request merges only
+- `npm run check` runs in GitHub Actions and is the initial required branch check

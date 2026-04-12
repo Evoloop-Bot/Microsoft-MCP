@@ -62,10 +62,10 @@ export const mailSendInputSchema = z.object({
   to: z.array(z.string().email()).min(1).describe("Recipient email addresses."),
   cc: z.array(z.string().email()).optional().describe("CC email addresses."),
   subject: z.string().min(1).describe("Message subject."),
-  bodyText: z.string().optional().describe("Plain text body. Provide bodyText or bodyHtml, not neither."),
-  bodyHtml: z.string().optional().describe("HTML body. Provide bodyText or bodyHtml, not neither.")
-}).refine((v) => v.bodyText !== undefined || v.bodyHtml !== undefined, {
-  message: "At least one of bodyText or bodyHtml is required."
+  bodyText: z.string().optional().describe("Plain text body. Provide exactly one of bodyText or bodyHtml."),
+  bodyHtml: z.string().optional().describe("HTML body. Provide exactly one of bodyText or bodyHtml.")
+}).refine((v) => (v.bodyText !== undefined) !== (v.bodyHtml !== undefined), {
+  message: "Exactly one of bodyText or bodyHtml must be provided."
 });
 
 export type MailSendInput = z.infer<typeof mailSendInputSchema>;

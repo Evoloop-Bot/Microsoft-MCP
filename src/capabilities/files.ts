@@ -13,20 +13,20 @@ interface DriveItem {
 }
 
 // Reject path strings that contain relative segments (.. or .) after decoding.
-// These would survive URL normalisation and could redirect the request to a
-// different Graph endpoint.
+// The entire path is decoded first so that encoded separators (%2f) and encoded
+// dots (%2e) are resolved before the segment check — otherwise patterns like
+// "foo%2f..%2fbar" or "%2e%2e%2fsecrets" bypass a split-then-decode approach.
 function noRelativeSegments(value: string | undefined): boolean {
   if (!value) {
     return true;
   }
-  return !value.split("/").some((seg) => {
-    try {
-      const decoded = decodeURIComponent(seg);
-      return decoded === ".." || decoded === ".";
-    } catch {
-      return true; // reject malformed percent-encoding
-    }
-  });
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(value);
+  } catch {
+    return false; // reject malformed percent-encoding
+  }
+  return !decoded.split("/").some((seg) => seg === ".." || seg === ".");
 }
 
 // ---------- files_list_items ----------

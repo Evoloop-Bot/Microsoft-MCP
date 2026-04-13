@@ -164,7 +164,7 @@ async function main(): Promise<void> {
     server.registerTool(
       "files_list_items",
       {
-        description: "List files and folders in OneDrive or an approved SharePoint location.",
+        description: "List files and folders in the signed-in user's OneDrive.",
         inputSchema: filesListItemsInputSchema,
         annotations: { readOnlyHint: true }
       },

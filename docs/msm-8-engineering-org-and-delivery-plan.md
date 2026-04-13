@@ -42,6 +42,13 @@ Initial ownership:
 3. regression checklist for mail, calendar, files, and people flows
 4. release signoff for pilot candidates
 
+Operational handoff from CTO:
+
+1. QA is the DRI for release evidence once engineering has a candidate slice to validate.
+2. The minimum owned smoke set is device-code auth plus `mail_list_messages` and one mutating path from `mail_send` or `calendar_create_event`.
+3. QA decides pass, fail, or blocked for pilot-candidate validation; CTO keeps final go/no-go authority.
+4. Founding engineering remains responsible for fixing product defects and supplying reproducible setup for QA runs.
+
 ### Security Engineer (Red Team)
 
 Primary mission:
@@ -97,6 +104,12 @@ Exit criteria:
 2. Smoke tests cover auth plus at least one read and one mutating path.
 3. Pilot runbooks, rollback steps, and troubleshooting notes are owned and current.
 
+Release-gating ownership:
+
+1. QA owns the smoke matrix, host-parity runbook, and regression checklist.
+2. Security owns auth, scope, and log-redaction review for pilot candidates.
+3. CTO is the final approver after QA and security evidence are complete.
+
 ### Workstream 4: Security and Red-Team Readiness
 
 Exit criteria:
@@ -124,6 +137,7 @@ Exit criteria:
 1. QA converts the release checklist into repeatable validation.
 2. Security engineer runs red-team review against auth, logging, and scope handling.
 3. CTO approves the pilot only after QA and security signoff are in place.
+4. Founding engineer supports QA with reproducible setup, seeded validation scenarios, and defect turnaround.
 
 ## Milestone Plan
 

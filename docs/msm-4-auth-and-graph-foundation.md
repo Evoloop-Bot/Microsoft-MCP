@@ -4,7 +4,7 @@
 
 1. `device_code` is the default for local Claude/Codex execution.
 2. `authorization_code` remains reserved for a later hosted bridge where browser-based redirects are practical, and the current runtime rejects it explicitly.
-3. `client_credentials` is supported in scaffolding for narrow app-only workloads, but it is not the default because the primary product path is user-delegated Microsoft 365 access.
+3. `client_credentials` was initially scaffolded for narrow app-only workloads but is removed from the pilot surface: all shipped tools use delegated `/me/...` endpoints that require user context, making app-only tokens functionally incompatible. `authorization_code` remains reserved for a later hosted bridge.
 
 ## Consent Strategy
 

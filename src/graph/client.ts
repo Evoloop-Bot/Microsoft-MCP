@@ -16,10 +16,13 @@ export class GraphClient {
     private readonly tokenProvider: TokenProvider
   ) {}
 
+  get httpTimeoutMs(): number {
+    return this.config.httpTimeoutMs;
+  }
+
   async request<T>(path: string, options: GraphRequestOptions = {}): Promise<T> {
     const method = options.method ?? "GET";
     const scopes = options.scopes ?? this.config.graphScopes;
-    const token = await this.tokenProvider.getAccessToken(scopes);
     const url = this.buildUrl(path, options.query);
 
     for (let attempt = 0; ; attempt += 1) {
@@ -27,6 +30,7 @@ export class GraphClient {
       const timeout = setTimeout(() => controller.abort(), this.config.httpTimeoutMs);
 
       try {
+        const token = await this.tokenProvider.getAccessToken(scopes);
         const response = await fetch(url, {
           method,
           headers: {
@@ -40,7 +44,8 @@ export class GraphClient {
         });
 
         if (response.ok) {
-          if (response.status === 204) {
+          // 204 No Content and 202 Accepted (e.g. /me/sendMail) carry no body.
+          if (response.status === 204 || response.status === 202) {
             return undefined as T;
           }
 
@@ -63,7 +68,7 @@ export class GraphClient {
         }
 
         if (error instanceof Error && error.name === "AbortError") {
-          if (this.shouldRetry(504, attempt)) {
+          if (this.shouldRetryTimeout(attempt)) {
             await sleep(backoffDelayMs(this.config.retryBaseDelayMs, attempt));
             continue;
           }
@@ -99,7 +104,13 @@ export class GraphClient {
   }
 
   private buildUrl(path: string, query?: GraphRequestOptions["query"]): string {
-    const url = new URL(path, this.config.graphBaseUrl.endsWith("/") ? this.config.graphBaseUrl : `${this.config.graphBaseUrl}/`);
+    const base = this.config.graphBaseUrl.endsWith("/")
+      ? this.config.graphBaseUrl
+      : `${this.config.graphBaseUrl}/`;
+    // new URL('/absolute', 'https://host/v1.0/') drops /v1.0. Strip the
+    // leading slash so paths are always resolved relative to the versioned base.
+    const relativePath = path.startsWith("/") ? path.slice(1) : path;
+    const url = new URL(relativePath, base);
 
     if (query) {
       for (const [key, value] of Object.entries(query)) {
@@ -118,6 +129,10 @@ export class GraphClient {
     }
 
     return status === 429 || status >= 500;
+  }
+
+  private shouldRetryTimeout(attempt: number): boolean {
+    return attempt < this.config.maxRetries;
   }
 }
 

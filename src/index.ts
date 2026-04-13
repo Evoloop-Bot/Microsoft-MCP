@@ -1,8 +1,12 @@
-export { loadConfig, getRequiredScopes } from "./config.js";
+export { loadConfig, getRequiredScopes, getDefaultToolsForCapabilities } from "./config.js";
 export { GraphClient } from "./graph/client.js";
-export { createTokenProvider, DeviceCodeTokenProvider, ClientCredentialsTokenProvider } from "./auth/device-code-provider.js";
+export { createTokenProvider, DeviceCodeTokenProvider } from "./auth/device-code-provider.js";
 export { capabilityManifest, implementationPhases } from "./capabilities/manifest.js";
-export type { MicrosoftGraphConfig, AuthFlow, Capability } from "./config.js";
+export type { MicrosoftGraphConfig, AuthFlow, Capability, ToolName } from "./config.js";
 export type { TokenProvider, AccessToken } from "./auth/types.js";
 export type { CapabilityContract, CapabilityDomain, CapabilityRiskLevel, CapabilityErrorCode } from "./capabilities/types.js";
 export { GraphClientError } from "./errors.js";
+export { mailListMessages, mailSend } from "./capabilities/mail.js";
+export { calendarListEvents, calendarCreateEvent } from "./capabilities/calendar.js";
+export { filesListItems, filesRead } from "./capabilities/files.js";
+export { peopleSearch } from "./capabilities/people.js";

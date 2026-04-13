@@ -5,12 +5,6 @@ import {
   InteractionRequiredAuthError,
   PublicClientApplication
 } from "@azure/msal-node";
-import {
-  DataProtectionScope,
-  Environment,
-  PersistenceCachePlugin,
-  PersistenceCreator
-} from "@azure/msal-node-extensions";
 import path from "node:path";
 
 import type { MicrosoftGraphConfig } from "../config.js";
@@ -107,7 +101,13 @@ export class DeviceCodeTokenProvider implements TokenProvider {
 }
 
 export async function createTokenProvider(config: MicrosoftGraphConfig): Promise<TokenProvider> {
-  const cachePath = config.tokenCachePath ?? defaultTokenCachePath();
+  const {
+    DataProtectionScope,
+    Environment,
+    PersistenceCachePlugin,
+    PersistenceCreator
+  } = await import("@azure/msal-node-extensions");
+  const cachePath = config.tokenCachePath ?? defaultTokenCachePath(Environment);
   const persistence = await PersistenceCreator.createPersistence({
     cachePath,
     dataProtectionScope: DataProtectionScope.CurrentUser,
@@ -129,7 +129,7 @@ export async function createTokenProvider(config: MicrosoftGraphConfig): Promise
   return new DeviceCodeTokenProvider(config, app);
 }
 
-function defaultTokenCachePath(): string {
+function defaultTokenCachePath(Environment: { getUserRootDirectory(): string | null }): string {
   const userRootDirectory = Environment.getUserRootDirectory();
   if (!userRootDirectory) {
     throw new Error("Unable to determine a user-scoped token cache directory.");

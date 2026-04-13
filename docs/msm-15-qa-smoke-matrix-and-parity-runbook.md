@@ -48,7 +48,7 @@ Minimum environment contract from the current repo:
 
 Current repo gap:
 
-The repository defines configuration and capability contracts, but it does not yet define a packaged stdio MCP server command or a QA smoke harness. Engineering must supply the exact candidate launch command and setup notes before a host-integrated validation run can move from `blocked` to executable.
+The repository defines configuration and capability contracts and now includes a packaged stdio MCP server command, but it does not yet provide a dedicated QA smoke harness. Engineering must still supply the exact candidate launch command, any package/install invocation details, and setup notes before a host-integrated validation run can move from `blocked` to executable.
 
 ## Smoke Matrix
 

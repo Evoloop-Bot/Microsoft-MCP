@@ -6,7 +6,8 @@ export type { MicrosoftGraphConfig, AuthFlow, Capability, ToolName } from "./con
 export type { TokenProvider, AccessToken } from "./auth/types.js";
 export type { CapabilityContract, CapabilityDomain, CapabilityRiskLevel, CapabilityErrorCode } from "./capabilities/types.js";
 export { GraphClientError } from "./errors.js";
-export { mailListMessages, mailSend } from "./capabilities/mail.js";
-export { calendarListEvents, calendarCreateEvent } from "./capabilities/calendar.js";
+export { mailListMessages, mailSearch, mailGetMessage, mailDraftReply, mailUpdate } from "./capabilities/mail.js";
+export { calendarListEvents, calendarCreateEvent, calendarUpdateEvent, calendarRespondEvent } from "./capabilities/calendar.js";
+export { SessionState, UnseenEventIdError } from "./session.js";
 export { filesListItems, filesRead } from "./capabilities/files.js";
 export { peopleSearch } from "./capabilities/people.js";

@@ -20,15 +20,26 @@ import { logToolCall, logToolError, logInfo, logWarn } from "./logger.js";
 import {
   mailListMessages,
   mailListMessagesInputSchema,
-  mailSend,
-  mailSendInputSchema
+  mailSearch,
+  mailSearchInputSchema,
+  mailGetMessage,
+  mailGetMessageInputSchema,
+  mailDraftReply,
+  mailDraftReplyInputSchema,
+  mailUpdate,
+  mailUpdateInputSchema
 } from "./capabilities/mail.js";
 import {
   calendarListEvents,
   calendarListEventsInputSchema,
   calendarCreateEvent,
-  calendarCreateEventInputSchema
+  calendarCreateEventInputSchema,
+  calendarUpdateEvent,
+  calendarUpdateEventInputSchema,
+  calendarRespondEvent,
+  calendarRespondEventInputSchema
 } from "./capabilities/calendar.js";
+import { SessionState } from "./session.js";
 import {
   filesListItems,
   filesListItemsInputSchema,
@@ -101,6 +112,7 @@ async function main(): Promise<void> {
 
   const tokenProvider = await createTokenProvider(config);
   const graph = new GraphClient(config, tokenProvider);
+  const session = new SessionState();
 
   const server = new McpServer(
     { name: "microsoft-365-mcp", version: "0.1.0" },
@@ -122,23 +134,57 @@ async function main(): Promise<void> {
       makeTool({ name: "mail_list_messages", domain: "mail", mutating: false, handler: (args) => mailListMessages(graph, args) })
     );
   }
-  if (enabledTools.has("mail_send")) {
+  if (enabledTools.has("mail_search")) {
     server.registerTool(
-      "mail_send",
+      "mail_search",
       {
-        description: "Send a mail message on behalf of the signed-in user. Side effect: delivers an email.",
-        inputSchema: mailSendInputSchema,
+        description: "Search mail messages by free-text query and/or OData filter across folders.",
+        inputSchema: mailSearchInputSchema,
+        annotations: { readOnlyHint: true }
+      },
+      makeTool({ name: "mail_search", domain: "mail", mutating: false, handler: (args) => mailSearch(graph, args) })
+    );
+  }
+  if (enabledTools.has("mail_get_message")) {
+    server.registerTool(
+      "mail_get_message",
+      {
+        description: "Fetch a single mail message with full body and optional attachment metadata.",
+        inputSchema: mailGetMessageInputSchema,
+        annotations: { readOnlyHint: true }
+      },
+      makeTool({ name: "mail_get_message", domain: "mail", mutating: false, handler: (args) => mailGetMessage(graph, args) })
+    );
+  }
+  if (enabledTools.has("mail_draft_reply")) {
+    server.registerTool(
+      "mail_draft_reply",
+      {
+        description: "Create a draft reply, reply-all, or forward of an existing message. Does not send.",
+        inputSchema: mailDraftReplyInputSchema,
         annotations: { readOnlyHint: false, destructiveHint: false }
       },
-      makeTool({ name: "mail_send", domain: "mail", mutating: true, handler: (args) => mailSend(graph, args) })
+      makeTool({ name: "mail_draft_reply", domain: "mail", mutating: true, handler: (args) => mailDraftReply(graph, args) })
+    );
+  }
+  if (enabledTools.has("mail_update")) {
+    server.registerTool(
+      "mail_update",
+      {
+        description: "Triage a message: mark read/unread, move to a folder, soft-delete, or flag.",
+        inputSchema: mailUpdateInputSchema,
+        annotations: { readOnlyHint: false, destructiveHint: false }
+      },
+      makeTool({ name: "mail_update", domain: "mail", mutating: true, handler: (args) => mailUpdate(graph, args) })
     );
   }
   if (!caps.has("mail")) {
-    logWarn("mail capability disabled — mail_list_messages and mail_send not registered");
-  } else if (!enabledTools.has("mail_list_messages") || !enabledTools.has("mail_send")) {
-    logInfo("mail capability partially enabled", {
-      enabledTools: config.enabledTools.filter((tool) => tool.startsWith("mail_"))
-    });
+    logWarn("mail capability disabled — mail tools not registered");
+  } else {
+    const mailTools = config.enabledTools.filter((tool) => tool.startsWith("mail_"));
+    if (mailTools.length < 5) {
+      logInfo("mail capability partially enabled", { enabledTools: mailTools });
+    }
   }
 
   // ---- calendar ----
@@ -150,26 +196,49 @@ async function main(): Promise<void> {
         inputSchema: calendarListEventsInputSchema,
         annotations: { readOnlyHint: true }
       },
-      makeTool({ name: "calendar_list_events", domain: "calendar", mutating: false, handler: (args) => calendarListEvents(graph, args) })
+      makeTool({ name: "calendar_list_events", domain: "calendar", mutating: false, handler: (args) => calendarListEvents(graph, args, session) })
     );
   }
   if (enabledTools.has("calendar_create_event")) {
     server.registerTool(
       "calendar_create_event",
       {
-        description: "Create a calendar event for the signed-in user. Side effect: creates a calendar entry.",
+        description: "Create a solo calendar event on the signed-in user's own calendar. Does not invite attendees. Use this for personal time blocking. To schedule meetings with other people, the user should do so in Outlook directly.",
         inputSchema: calendarCreateEventInputSchema,
         annotations: { readOnlyHint: false, destructiveHint: false }
       },
       makeTool({ name: "calendar_create_event", domain: "calendar", mutating: true, handler: (args) => calendarCreateEvent(graph, args) })
     );
   }
+  if (enabledTools.has("calendar_update_event")) {
+    server.registerTool(
+      "calendar_update_event",
+      {
+        description: "Update or cancel an existing calendar event. Before calling this tool, you MUST first call calendar_list_events to retrieve the event and confirm with the user — by subject and time — that it is the correct event. Never call this tool with an eventId you have not seen in a prior calendar_list_events result in this conversation. For cancel: if the event has attendees, cancellation notices will be sent to all of them and cannot be recalled.",
+        inputSchema: calendarUpdateEventInputSchema,
+        annotations: { readOnlyHint: false, destructiveHint: true }
+      },
+      makeTool({ name: "calendar_update_event", domain: "calendar", mutating: true, handler: (args) => calendarUpdateEvent(graph, args, session) })
+    );
+  }
+  if (enabledTools.has("calendar_respond_event")) {
+    server.registerTool(
+      "calendar_respond_event",
+      {
+        description: "Respond to a received meeting invite: accept, decline, or tentatively accept.",
+        inputSchema: calendarRespondEventInputSchema,
+        annotations: { readOnlyHint: false, destructiveHint: false }
+      },
+      makeTool({ name: "calendar_respond_event", domain: "calendar", mutating: true, handler: (args) => calendarRespondEvent(graph, args, session) })
+    );
+  }
   if (!caps.has("calendar")) {
-    logWarn("calendar capability disabled — calendar_list_events and calendar_create_event not registered");
-  } else if (!enabledTools.has("calendar_list_events") || !enabledTools.has("calendar_create_event")) {
-    logInfo("calendar capability partially enabled", {
-      enabledTools: config.enabledTools.filter((tool) => tool.startsWith("calendar_"))
-    });
+    logWarn("calendar capability disabled — calendar tools not registered");
+  } else {
+    const calTools = config.enabledTools.filter((tool) => tool.startsWith("calendar_"));
+    if (calTools.length < 4) {
+      logInfo("calendar capability partially enabled", { enabledTools: calTools });
+    }
   }
 
   // ---- files ----

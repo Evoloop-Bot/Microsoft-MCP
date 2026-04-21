@@ -243,8 +243,8 @@ describe("calendar_respond_event", () => {
 
       assert.ok(seenPath.endsWith(`/${response}`), `Expected path to end with /${response}, got ${seenPath}`);
       assert.ok(seenBody);
-      assert.equal(seenBody.Comment, "Thanks");
-      assert.equal(seenBody.SendResponse, true);
+      assert.equal(seenBody.comment, "Thanks");
+      assert.equal(seenBody.sendResponse, true);
     }
   });
 });

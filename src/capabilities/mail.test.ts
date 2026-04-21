@@ -17,11 +17,13 @@ describe("mail_search", () => {
     assert.equal(result.success, false);
   });
 
-  it("drops $orderby when query is set", async () => {
+  it("drops $orderby when query is set and adds ConsistencyLevel header", async () => {
     let seenQuery: Record<string, unknown> | undefined;
+    let seenHeaders: Record<string, string> | undefined;
     const client = {
-      request: async (_path: string, options?: { query?: Record<string, unknown> }) => {
+      request: async (_path: string, options?: { query?: Record<string, unknown>; headers?: Record<string, string> }) => {
         seenQuery = options?.query;
+        seenHeaders = options?.headers;
         return { value: [] };
       }
     } as unknown as GraphClient;
@@ -31,6 +33,9 @@ describe("mail_search", () => {
     assert.ok(seenQuery);
     assert.equal(seenQuery["$search"], '"budget"');
     assert.equal(seenQuery["$orderby"], undefined);
+    assert.equal(seenQuery["$count"], true);
+    assert.ok(seenHeaders);
+    assert.equal(seenHeaders["ConsistencyLevel"], "eventual");
   });
 
   it("uses $orderby when query is absent", async () => {
@@ -76,6 +81,21 @@ describe("mail_search", () => {
     await mailSearch(client, { folderId: "drafts", top: 5, includeBody: false });
 
     assert.ok(seenPath.includes("/me/mailFolders/drafts/messages"));
+  });
+
+  it("escapes double quotes in $search query", async () => {
+    let seenQuery: Record<string, unknown> | undefined;
+    const client = {
+      request: async (_path: string, options?: { query?: Record<string, unknown> }) => {
+        seenQuery = options?.query;
+        return { value: [] };
+      }
+    } as unknown as GraphClient;
+
+    await mailSearch(client, { query: 'budget "Q1"', top: 5, includeBody: false });
+
+    assert.ok(seenQuery);
+    assert.equal(seenQuery["$search"], '"budget \\"Q1\\""');
   });
 
   it("uses /me/messages when folderId is absent", async () => {

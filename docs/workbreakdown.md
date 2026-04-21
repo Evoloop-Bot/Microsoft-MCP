@@ -63,7 +63,9 @@ tail. Do not implement them in this pass.
   `config.ts` already accepts the new names** — do not re-edit the manifest
   unless schemas diverge during implementation.
 
-### Remaining
+### Done (completed in PR #2)
+
+All remaining tasks below were implemented and merged.
 
 #### 1. Add `mail_search` to `src/capabilities/mail.ts`
 

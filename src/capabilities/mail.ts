@@ -92,8 +92,13 @@ export async function mailSearch(client: GraphClient, input: MailSearchInput): P
 
   const query: Record<string, string | number | boolean> = { $select: select, $top: input.top };
 
+  const headers: Record<string, string> = {};
+
   if (input.query) {
-    query["$search"] = `"${input.query}"`;
+    const sanitized = input.query.replace(/"/g, '\\"');
+    query["$search"] = `"${sanitized}"`;
+    query["$count"] = true;
+    headers["ConsistencyLevel"] = "eventual";
   } else {
     query["$orderby"] = "receivedDateTime desc";
   }
@@ -106,7 +111,7 @@ export async function mailSearch(client: GraphClient, input: MailSearchInput): P
     ? `/me/mailFolders/${encodeURIComponent(input.folderId)}/messages`
     : "/me/messages";
 
-  const response = await client.request<{ value: (MailMessage & { bodyPreview?: string })[] }>(path, { query });
+  const response = await client.request<{ value: (MailMessage & { bodyPreview?: string })[] }>(path, { query, headers });
 
   return {
     messages: response.value.map((m) => ({
@@ -166,16 +171,19 @@ export async function mailGetMessage(client: GraphClient, input: MailGetMessageI
     { query: { $select: "id,subject,from,toRecipients,ccRecipients,receivedDateTime,webLink,body" } }
   );
 
+  const rawContentType = msg.body?.contentType?.toLowerCase();
+  const bodyContentType: "text" | "html" = rawContentType === "html" ? "html" : "text";
+
   const result: MailGetMessageOutput = {
     id: msg.id,
     subject: msg.subject,
     from: msg.from?.emailAddress.address ?? null,
-    to: msg.toRecipients.map((r) => r.emailAddress.address),
-    cc: msg.ccRecipients.map((r) => r.emailAddress.address),
+    to: (msg.toRecipients ?? []).map((r) => r.emailAddress.address),
+    cc: (msg.ccRecipients ?? []).map((r) => r.emailAddress.address),
     receivedDateTime: msg.receivedDateTime,
     webLink: msg.webLink,
-    bodyContentType: msg.body.contentType.toLowerCase() as "text" | "html",
-    bodyContent: msg.body.content
+    bodyContentType,
+    bodyContent: msg.body?.content ?? ""
   };
 
   if (input.includeAttachments) {

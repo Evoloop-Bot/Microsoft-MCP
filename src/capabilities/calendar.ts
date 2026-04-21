@@ -188,7 +188,7 @@ export async function calendarUpdateEvent(client: GraphClient, input: CalendarUp
   if (hasAttendees) {
     await client.request<unknown>(`${eventPath}/cancel`, {
       method: "POST",
-      body: { Comment: input.cancelComment }
+      body: { comment: input.cancelComment }
     });
   } else {
     await client.request<unknown>(eventPath, { method: "DELETE" });
@@ -223,7 +223,7 @@ export async function calendarRespondEvent(client: GraphClient, input: CalendarR
     `/me/events/${encodeURIComponent(input.eventId)}/${input.response}`,
     {
       method: "POST",
-      body: { Comment: input.comment, SendResponse: input.sendResponse }
+      body: { comment: input.comment, sendResponse: input.sendResponse }
     }
   );
 

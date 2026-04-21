@@ -214,7 +214,7 @@ async function main(): Promise<void> {
     server.registerTool(
       "calendar_update_event",
       {
-        description: "Update or cancel an existing calendar event. Before calling this tool, you MUST first call calendar_list_events to retrieve the event and confirm with the user — by subject, time, and attendees — that it is the correct event. Never call this tool with an eventId you have not seen in a prior calendar_list_events result in this conversation. For cancel: if the event has attendees, cancellation notices will be sent to all of them and cannot be recalled.",
+        description: "Update or cancel an existing calendar event. Before calling this tool, you MUST first call calendar_list_events to retrieve the event and confirm with the user — by subject and time — that it is the correct event. Never call this tool with an eventId you have not seen in a prior calendar_list_events result in this conversation. For cancel: if the event has attendees, cancellation notices will be sent to all of them and cannot be recalled.",
         inputSchema: calendarUpdateEventInputSchema,
         annotations: { readOnlyHint: false, destructiveHint: true }
       },
